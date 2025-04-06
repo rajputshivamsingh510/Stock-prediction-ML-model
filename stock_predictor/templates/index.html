@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Prediction Tool</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+  <body>
+    <header>
+      <h1>Stock Market Prediction Tool</h1>
+    </header>
+
+    <div class="container">
+      <div class="card">
+        <h2>Prediction Settings</h2>
+        <form id="predictionForm">
+          <div class="form-group">
+            <label for="stockSymbol">Stock Symbol:</label>
+            <input
+              type="text"
+              id="stockSymbol"
+              value="^NSEI"
+              placeholder="Enter stock symbol (e.g. ^NSEI, AAPL)"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate" value="2020-01-01" />
+          </div>
+
+          <div class="form-group">
+            <label for="predictionDays">Prediction Days:</label>
+            <input
+              type="number"
+              id="predictionDays"
+              value="30"
+              min="1"
+              max="90"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="modelType">Model Type:</label>
+            <select id="modelType">
+              <option value="random_forest">Random Forest</option>
+              <option value="lstm">LSTM Neural Network</option>
+            </select>
+          </div>
+
+          <button type="submit">Generate Prediction</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Price Prediction</h2>
+        <div id="loading" class="loader" style="display: none"></div>
+        <div id="chartContainer" class="chart-container"></div>
+
+        <div class="stats" id="statsContainer" style="display: none">
+          <div class="stat-card">
+            <h3>Last Price</h3>
+            <p id="lastPrice">₹0.00</p>
+          </div>
+          <div class="stat-card">
+            <h3>Predicted Price</h3>
+            <p id="predictedPrice">₹0.00</p>
+          </div>
+          <div class="stat-card">
+            <h3>Change</h3>
+            <p id="changePercent">0.00%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script>
+      // DOM elements
+      const form = document.getElementById("predictionForm");
+      const loading = document.getElementById("loading");
+      const chartContainer = document.getElementById("chartContainer");
+      const statsContainer = document.getElementById("statsContainer");
+      const lastPriceEl = document.getElementById("lastPrice");
+      const predictedPriceEl = document.getElementById("predictedPrice");
+      const changePercentEl = document.getElementById("changePercent");
+
+      // Chart instance
+      let stockChart = null;
+
+      // Mock data generation (would be replaced by API calls)
+      function generateMockData(symbol, days, modelType) {
+        // Create historical data
+        const historical = [];
+        const startPrice = 15000 + Math.random() * 5000;
+        const today = new Date();
+
+        for (let i = 60; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(today.getDate() - i);
+
+          // Add some random variation to create a realistic chart
+          const price = startPrice * (1 + (Math.random() - 0.48) * 0.005 * i);
+
+          historical.push({
+            date: formatDate(date),
+            price: Math.round(price * 100) / 100,
+          });
+        }
+
+        // Create prediction data
+        const predictions = [];
+        const lastActualPrice = historical[historical.length - 1].price;
+        const trend = modelType === "lstm" ? 0.001 : 0.0005;
+
+        for (let i = 1; i <= days; i++) {
+          const date = new Date();
+          date.setDate(today.getDate() + i);
+
+          // Add trend and randomness based on model type
+          const variation = modelType === "lstm" ? 0.01 : 0.015;
+          const price =
+            lastActualPrice *
+            (1 + trend * i + (Math.random() - 0.48) * variation * i);
+
+          predictions.push({
+            date: formatDate(date),
+            price: Math.round(price * 100) / 100,
+          });
+        }
+
+        return {
+          historical,
+          predictions,
+        };
+      }
+
+      // Format date to YYYY-MM-DD
+      function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      // Handle form submission
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const symbol = document.getElementById("stockSymbol").value;
+        const days = parseInt(document.getElementById("predictionDays").value);
+        const modelType = document.getElementById("modelType").value;
+
+        if (!symbol) {
+          alert("Please enter a stock symbol");
+          return;
+        }
+
+        // Show loading
+        loading.style.display = "block";
+        chartContainer.innerHTML = "";
+        statsContainer.style.display = "none";
+
+        // Simulate API call delay
+        setTimeout(() => {
+          const data = generateMockData(symbol, days, modelType);
+          renderChart(data, symbol);
+          updateStats(data);
+
+          loading.style.display = "none";
+          statsContainer.style.display = "flex";
+        }, 1500);
+      });
+
+      // Render chart with the data
+      function renderChart(data, symbol) {
+        // Prepare data for Chart.js
+        const labels = [
+          ...data.historical.map((d) => d.date),
+          ...data.predictions.map((d) => d.date),
+        ];
+
+        const historicalData = data.historical.map((d) => d.price);
+        const predictedData = Array(data.historical.length)
+          .fill(null)
+          .concat(data.predictions.map((d) => d.price));
+
+        // Create canvas for chart
+        chartContainer.innerHTML = '<canvas id="stockChart"></canvas>';
+        const ctx = document.getElementById("stockChart").getContext("2d");
+
+        // Create chart
+        stockChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Historical Prices",
+                data: historicalData.concat(
+                  Array(data.predictions.length).fill(null)
+                ),
+                borderColor: "rgb(85, 252, 7)",
+                backgroundColor: "rgba(54, 162, 235, 0.2)",
+                borderWidth: 2,
+                tension: 0.1,
+              },
+              {
+                label: "Predicted Prices",
+                data: predictedData,
+                borderColor: "rgb(238, 3, 113)",
+                backgroundColor: "rgba(255, 99, 132, 0.2)",
+                borderWidth: 2,
+                borderDash: [5, 5],
+                tension: 0.1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: `${symbol} Stock Price Prediction`,
+                color: "#ffffff",
+              },
+              tooltip: {
+                mode: "index",
+                intersect: false,
+                titleColor: "#ffffff",
+                bodyColor: "#ffffff",
+                backgroundColor: "rgba(0,0,0,0.8)",
+              },
+              legend: {
+                labels: {
+                  color: "#ffffff",
+                },
+              },
+            },
+            scales: {
+              x: {
+                display: true,
+                title: {
+                  display: true,
+                  text: "Date",
+                  color: "#ffffff",
+                },
+                ticks: {
+                  color: "#ffffff",
+                  maxTicksLimit: 10,
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.23)",
+                },
+              },
+              y: {
+                display: true,
+                title: {
+                  display: true,
+                  text: "Price",
+                  color: "#ffffff",
+                },
+                ticks: {
+                  color: "#ffffff",
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.23)",
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Update statistics
+      function updateStats(data) {
+        const lastActual = data.historical[data.historical.length - 1].price;
+        const lastPredicted =
+          data.predictions[data.predictions.length - 1].price;
+        const changePercent = (lastPredicted / lastActual - 1) * 100;
+
+        lastPriceEl.textContent = `₹${lastActual.toLocaleString()}`;
+        predictedPriceEl.textContent = `₹${lastPredicted.toLocaleString()}`;
+
+        changePercentEl.textContent = `${changePercent.toFixed(2)}%`;
+        changePercentEl.className =
+          changePercent >= 0 ? "positive" : "negative";
+      }
+
+      // Initialize with empty chart
+      window.onload = function () {
+        chartContainer.innerHTML =
+          '<div style="text-align: center; padding: 2rem;">Enter a stock symbol and click "Generate Prediction" to see results</div>';
+      };
+    </script>
+  </body>
+</html>
