@@ -25,21 +25,21 @@ Data Source: yFinance (Yahoo Finance)
 ML Models: RandomForest, LSTM
 
 📦 Installation
-Clone the repository 
+1.Clone the repository 
 
 
-git clone https://github.com/your-username/stock-predictor-app.git
-cd stock-predictor-app
-Create a virtual environment (optional but recommended)
+2.git clone https://github.com/your-username/stock-predictor-app.git
+  cd stock-predictor-app
+  
+3. Create a virtual environment (optional but recommended)
 
 
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-Install dependencies
+4. python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   Install dependencies
 
-
-pip install -r requirements.txt
-Run the app
+5.pip install -r requirements.txt
+  Run the app
 
 
 python app.py
